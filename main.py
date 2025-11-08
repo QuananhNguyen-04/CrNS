@@ -21,7 +21,7 @@ def main():
     print(f"\nThông điệp gốc: {data}")
 
     # 4. Chuyển sang int để mã hóa
-    m_int = bytes_to_int(data.encode())
+    m_int = bytes_to_int(data)
 
     # 5. Mã hóa
     c_int = encrypt(m_int, e, n)
@@ -30,14 +30,14 @@ def main():
     # 6. Giải mã
     decrypted_int = decrypt(c_int, d, n)
     decrypted_bytes = int_to_bytes(decrypted_int)
-    plaintext = decrypted_bytes.decode(errors="ignore")
 
     # 7. Ghi kết quả ra file
-    write_output("output.txt", plaintext)
+    write_output("output.txt", decrypted_bytes)
 
     print(f"\nGiải mã thành công:")
+    data=read_input("output.txt")
+    plaintext = data.decode('utf-8')
     print(f"Plaintext: {plaintext}")
-
 
 if __name__ == "__main__":
     main()
