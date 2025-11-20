@@ -23,4 +23,3 @@ print(f"Bytes to Int: {i}")
 b = int_to_bytes(i)
 print(f"Int to Bytes: {b}")
 write_output("output.txt", b)
-

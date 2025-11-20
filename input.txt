@@ -1,5 +1,4 @@
 RSA Cyphergraph System (CrNS)
 ================================
-This program implements a basic RSA encryption and decryption system. It reads input data from a file, processes it using RSA algorithms, and writes the output to another
-file.
+This program implements a basic RSA encryption and decryption system. It reads input data from a file, processes it using RSA algorithms, and writes the output to another file.
 The program is modular, with separate files for RSA core functions, data conversion, and input/output operations.
