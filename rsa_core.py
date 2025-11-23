@@ -1,3 +1,6 @@
+import random
+from math_utils import is_probable_prime, gcd, modinv, pow_mod
+
 def generate_large_prime(bits: int) -> int:
     while True:
         p = random.getrandbits(bits) # generate a random number which is bits long
