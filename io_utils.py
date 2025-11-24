@@ -27,3 +27,36 @@ def write_key(filepath: str, key) -> None:
     with open(filepath, "w") as f:  # overwrite file
         for k in key:
             f.write(f"{k}\n")  # convert int to str and add newline
+
+def diff_bytes(a: bytes, b: bytes, *, context=32):
+    """
+    Deep-diff two byte sequences and report the first point of divergence.
+    Produces structured diagnostics to facilitate root-cause isolation.
+    """
+    min_len = min(len(a), len(b))
+
+    # Find first differing index
+    for i in range(min_len):
+        if a[i] != b[i]:
+            start = max(0, i - context)
+            end = min(min_len, i + context)
+
+            print("\n=== BYTE DIVERGENCE DETECTED ===")
+            print(f"Index: {i} {i / 1024} KB ")
+            print(f"Original Byte : {a[i]:02X}")
+            print(f"Recovered Byte: {b[i]:02X}")
+            print("\nContext Window:")
+            print(f"Original [{start}:{end}]: {a[start:end].hex()}")
+            print(f"Recovered[{start}:{end}]: {b[start:end].hex()}")
+            print("================================\n")
+            return
+
+    # No difference within shared length
+    if len(a) != len(b):
+        print("\n=== LENGTH MISMATCH ===")
+        print(f"Original length : {len(a)}")
+        print(f"Recovered length: {len(b)}")
+        print("=======================\n")
+        return
+
+    print("No differences found. Byte sequences match exactly.")
