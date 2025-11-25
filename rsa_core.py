@@ -17,9 +17,11 @@ def generate_keypair(bits: int = 1024) -> tuple[tuple[int, int], tuple[int, int]
         p = generate_large_prime(bits)
     n = p * q
     phi_n = (p - 1) * (q - 1) # Euler's totient function
-    e = 65537
-    while gcd(e, phi_n) != 1:
+    # find e so that e and phi_n are coprime numbers
+    while True:
         e = random.randint(2, phi_n - 1)
+        if gcd(e, phi_n) == 1:
+            break
     d = modinv(e, phi_n)
     return ( (e, n), (d, n) )
 
