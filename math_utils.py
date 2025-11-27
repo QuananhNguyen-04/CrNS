@@ -67,6 +67,61 @@ def is_probable_prime(n: int, k: int = 20) -> bool:
     return True
 
 
+def solve_crt(rem_a: int, rem_b: int, m_a: int, m_b: int) -> int:
+    """
+    Solves the system of congruences using the Chinese Remainder Theorem:
+    x = rem_a (mod m_a)
+    x = rem_b (mod m_b)
+    Assumes m_a and m_b are coprime.
+    """
+    M = m_a * m_b
+    # Modular inverse of m_b modulo m_a
+    y_a = modinv(m_b, m_a)
+    # Modular inverse of m_a modulo m_b
+    y_b = modinv(m_a, m_b)
+
+    # x = (rem_a * m_b * y_a + rem_b * m_a * y_b) % M
+    rem = (rem_a * m_b * y_a + rem_b * m_a * y_b) % M
+    return rem
+
+
+def pollards_rho(n: int) -> int:
+    """
+    Attempts to find a non-trivial factor of n using Pollard's Rho algorithm.
+    This is a 'Las Vegas' algorithm: it may fail (return failure), 
+    but if it returns a number, it is definitely a factor.
+    Useful for checking if a generated RSA modulus is easily factorable (weak).
+    """
+    if n % 2 == 0:
+        return 2
+        
+    # Initialize the Tortoise (x) and the Hare (y)
+    x = 2
+    y = 2
+    d = 1
+    
+    # Define the function that generates the path
+    # This makes the "Rho" shape.
+    f = lambda v: (v * v + 1) % n
+
+    # Start the race!
+    while d == 1:
+        # Tortoise takes 1 step
+        x = f(x)          
+        
+        # Hare takes 2 steps
+        y = f(f(y))       
+        
+        # We check if the DIFFERENCE between x and y shares a factor with n.
+        # This allows us to find the factor 'p' long before x actually equals y.
+        d = gcd(abs(x - y), n)
+
+    if d == n:
+        return None # Failed. The cycle matched n, not a factor.
+    else:
+        return d # Success! 'd' is a non-trivial factor.
+
+
 if __name__ == '__main__':
     # Tests for function modinv
     # Let's say we need to find the private key 'd' for RSA

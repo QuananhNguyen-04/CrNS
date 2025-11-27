@@ -1,7 +1,9 @@
+import time
 from typing import Dict, Tuple, List
-from rsa_core import generate_keypair, encrypt, decrypt
+from rsa_core import generate_keypair, encrypt, decrypt, decrypt_crt
 from convert import bytes_to_int, int_to_bytes
 from io_utils import read_input, read_key, write_output, write_key, diff_bytes
+from math_utils import pollards_rho
 
 
 # ============================================================
@@ -22,7 +24,7 @@ def rsa_encrypt_file(filepath: str, key_bits: int) -> Dict:
     # Generate primes for RSA
     public_key, private_key = generate_keypair(key_bits // 2)
     e, n = public_key
-    d, _ = private_key
+    d, _, p, q = private_key
 
     print(f"Public key   (e, n): e = {e}, n = {n}")
     print(f"Private key  (d, n): d = {d}, n = {n}")
@@ -49,7 +51,7 @@ def rsa_encrypt_file(filepath: str, key_bits: int) -> Dict:
     return {
         "cipher_chunks": encrypted_chunks,
         "public_key": (e, n),
-        "private_key": (d, n),
+        "private_key": (d, n, p, q),
     }
 
 
@@ -59,7 +61,7 @@ def rsa_encrypt_file(filepath: str, key_bits: int) -> Dict:
 def rsa_decrypt_file(
     cipher_path: str,
     key_path: str | None = None,
-    key: Tuple[int, int] | None = None
+    key: Tuple[int, int, int, int] | None = None
 ) -> bytes:
     """
     Executes the RSA backward pipeline:
@@ -75,12 +77,19 @@ def rsa_decrypt_file(
     # Key provisioning
     if key_path is None and key is None:
         raise ValueError("Missing private key")
-
     private_key = read_key(key_path) if key_path else key
-    if private_key is None or len(private_key) < 2:
+
+    use_crt = False
+    if len(private_key) == 4:
+        d, n, p, q = private_key
+        use_crt = True
+        print("Using Optimized CRT Decryption")
+    elif len(private_key) == 2:
+        d, n = private_key
+        print("Using Standard Decryption")
+    else:
         raise ValueError(f"Invalid private key format: {private_key}")
 
-    d, n = private_key
     block_size = (n.bit_length() + 7) // 8
     payload_size = block_size - 11
 
@@ -95,7 +104,10 @@ def rsa_decrypt_file(
     plaintext_chunks: List[bytes] = []
 
     for idx, block in enumerate(cipher_chunks):
-        decrypted_int = decrypt(block, d, n)
+        if use_crt:
+            decrypted_int = decrypt_crt(block, d, p, q)
+        else:
+            decrypted_int = decrypt(block, d, n)
         raw_bytes = int_to_bytes(decrypted_int, n)
 
         # Non-final block = fixed payload slice
@@ -136,6 +148,28 @@ def main():
 
     print("\nDecryption successful:")
     diff_bytes(read_input(input_file), plaintext)
+
+
+def demo_hacking_capability():
+    print("\n--- DEMO: Hacking a Weak Key ---")
+    # 1. Generate a small, weak key (e.g., 32 bits)
+    print("Generating weak 32-bit key...")
+    public, private = generate_keypair(32) 
+    e, n = public
+    print(f"Weak Modulus n: {n}")
+
+    # 2. Attack it
+    print("Attacking with Pollard's Rho...")
+    start = time.time()
+    factor = pollards_rho(n)
+    end = time.time()
+
+    if factor:
+        print(f"SUCCESS! Key broken in {end - start:.4f} seconds.")
+        print(f"Found factor: {factor}")
+        print(f"Other factor: {n // factor}")
+    else:
+        print("Attack failed (bad luck or prime is too large for quick demo).")
 
 
 if __name__ == "__main__":
