@@ -2,17 +2,28 @@ import random
 
 
 def gcd(a: int, b: int) -> int:
-    if b == 0: return a
-    return gcd(b, a % b)
+    """
+    Iterative implementation of Euclidean Algorithm.
+    Safe for large integers.
+    """
+    while b != 0:
+        a, b = b, a % b
+    return a
 
 
 def egcd(a: int, b: int) -> tuple[int, int, int]:
-    if b == 0:
-        return (a, 1, 0)
-    gcd, x_prime, y_prime = egcd(b, a % b)
-    x = y_prime
-    y = x_prime - (a // b) * y_prime
-    return (gcd, x, y)
+    """
+    Iterative implementation of Extended Euclidean Algorithm.
+    Returns (gcd, x, y) such that ax + by = gcd
+    """
+    x0, y0 = 1, 0 # a = 1*a + 0*b
+    x1, y1 = 0, 1 # b = 0*a + 1*b
+    while b != 0:
+        q, a, b = a // b, b, a % b
+        # New = Old - Quotient * Current
+        x0, x1 = x1, x0 - q * x1
+        y0, y1 = y1, y0 - q * y1
+    return a, x0, y0
 
 
 def modinv(a: int, m: int) -> int:
@@ -123,33 +134,39 @@ def pollards_rho(n: int) -> int:
 
 
 if __name__ == '__main__':
-    # Tests for function modinv
-    # Let's say we need to find the private key 'd' for RSA
-    e = 7
-    phi_n = 20 # from p=3, q=11 -> (p-1)*(q-1) = 2*10=20
-
-    # We need to find d = modinv(e, phi_n)
-    d = modinv(e, phi_n)
+    print("--- Testing Math Utils ---")
     
-    print(f"e = {e}, phi_n = {phi_n}")
-    print(f"The private key d is: {d}")
-    print(f"Verification: (e * d) % phi_n = ({e} * {d}) % {phi_n} = {(e * d) % phi_n}")
-    # The result of the verification should be 1.
+    # 1. Test GCD
+    assert gcd(12, 15) == 3
+    assert gcd(3, 7) == 1
+    print("[PASS] GCD")
 
+    # 2. Test Modular Inverse
+    # 3 * x = 1 (mod 11) -> x should be 4 because 3*4 = 12 = 1 (mod 11)
+    assert modinv(3, 11) == 4
+    print("[PASS] Modular Inverse")
 
-    # Tests for function is_probable_prime
-    # Test with a known prime
-    p = 13
-    print(f"Is {p} probably prime? {is_probable_prime(p)}")
+    # 3. Test Modular Exponentiation
+    # 2^10 mod 1000 = 1024 mod 1000 = 24
+    assert pow_mod(2, 10, 1000) == 24
+    print("[PASS] Modular Exponentiation")
 
-    # Test with a known composite
-    c = 15
-    print(f"Is {c} probably prime? {is_probable_prime(c)}")
+    # 4. Test Primality (Miller-Rabin)
+    assert is_probable_prime(17) == True
+    assert is_probable_prime(65537) == True
+    assert is_probable_prime(15) == False
+    assert is_probable_prime(561) == False # Carmichael number
+    print("[PASS] Primality Test")
 
-    # Test with a large known prime
-    large_prime = 65537
-    print(f"Is {large_prime} probably prime? {is_probable_prime(large_prime)}")
+    # 5. Test Chinese Remainder Theorem (CRT)
+    # Find x where x = 2 mod 3 AND x = 3 mod 5
+    # Answer should be 8 (8%3=2, 8%5=3) or 23, etc.
+    result = solve_crt(2, 3, 3, 5)
+    assert result == 8
+    print("[PASS] CRT")
 
-    # Test with a large composite (Carmichael number, fools simpler tests)
-    large_composite = 561
-    print(f"Is {large_composite} probably prime? {is_probable_prime(large_composite)}")
+    # 6. Test Pollard's Rho (Factoring)
+    n = 8051 # 83 * 97
+    factor = pollards_rho(n)
+    assert factor == 83 or factor == 97
+    print("[PASS] Pollard's Rho")

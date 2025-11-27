@@ -53,3 +53,40 @@ def decrypt_crt(cipher_int: int, d: int, p: int, q: int) -> int:
 def decrypt(cipher_int: int, d: int, n: int) -> int:
     # Standard slow decryption (keep as backup)
     return pow_mod(cipher_int, d, n)
+
+
+if __name__ == '__main__':
+    import time
+    print("--- Testing RSA Core ---")
+    
+    # Test Key Gen
+    bits = 1024
+    print(f"Generating {bits}-bit keys...")
+    pub, priv = generate_keypair(bits)
+    e, n = pub
+    d, _, p, q = priv
+    print("[PASS] Key Generation")
+
+    # Test Encrypt/Decrypt
+    message = 123456789
+    cipher = encrypt(message, e, n)
+    plain = decrypt(cipher, d, n)
+    assert plain == message
+    print("[PASS] Standard Encrypt/Decrypt")
+
+    # Test CRT Decrypt
+    plain_crt = decrypt_crt(cipher, d, p, q)
+    assert plain_crt == message
+    print("[PASS] CRT Decrypt")
+
+    # Speed Test
+    print("\nRunning Speed Test (100 iterations)...")
+    t0 = time.time()
+    for _ in range(100): decrypt(cipher, d, n)
+    t1 = time.time()
+    for _ in range(100): decrypt_crt(cipher, d, p, q)
+    t2 = time.time()
+    
+    print(f"Standard Time: {t1-t0:.4f}s")
+    print(f"CRT Time:      {t2-t1:.4f}s")
+    print(f"Speedup:       {(t1-t0)/(t2-t1):.2f}x")

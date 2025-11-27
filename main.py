@@ -122,10 +122,30 @@ def rsa_decrypt_file(
     return b"".join(plaintext_chunks)
 
 
+def demo_hacking(bit_num):
+    print("\n=== DEMO: HACKING WEAK KEY ===")
+    # Generate weak key
+    pub, _ = generate_keypair(bit_num) # 32 bits is tiny
+    _, n = pub
+    print(f"Weak Modulus: {n}")
+    
+    start = time.time()
+    factor = pollards_rho(n)
+    end = time.time()
+    
+    if factor:
+        print(f"CRACKED! Factors: {factor} * {n//factor}")
+        print(f"Time: {end-start:.5f}s")
+    else:
+        print("Failed.")
+
+
 # ============================================================
 #  End-to-End Demo
 # ============================================================
 def main():
+    # 1. Run the Standard Assignment Flow
+    print("=== STANDARD ASSIGNMENT FLOW ===")
     key_bits = 1024
     input_file = "./input.txt"
 
@@ -144,32 +164,13 @@ def main():
 
     # Backward
     plaintext = rsa_decrypt_file("cipher_text.txt", "private_key.txt")
-    write_output("output.jpg", plaintext)
+    write_output("output.txt", plaintext)
 
     print("\nDecryption successful:")
     diff_bytes(read_input(input_file), plaintext)
 
-
-def demo_hacking_capability():
-    print("\n--- DEMO: Hacking a Weak Key ---")
-    # 1. Generate a small, weak key (e.g., 32 bits)
-    print("Generating weak 32-bit key...")
-    public, private = generate_keypair(32) 
-    e, n = public
-    print(f"Weak Modulus n: {n}")
-
-    # 2. Attack it
-    print("Attacking with Pollard's Rho...")
-    start = time.time()
-    factor = pollards_rho(n)
-    end = time.time()
-
-    if factor:
-        print(f"SUCCESS! Key broken in {end - start:.4f} seconds.")
-        print(f"Found factor: {factor}")
-        print(f"Other factor: {n // factor}")
-    else:
-        print("Attack failed (bad luck or prime is too large for quick demo).")
+    # 2. Run the Creative Hacking Demo
+    demo_hacking(48)
 
 
 if __name__ == "__main__":
