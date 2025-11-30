@@ -1,9 +1,21 @@
+import os
 import time
 from typing import Dict, Tuple, List
 from rsa_core import generate_keypair, encrypt, decrypt, decrypt_crt
 from convert import bytes_to_int, int_to_bytes
 from io_utils import read_input, read_key, write_output, write_key, diff_bytes
 from math_utils import pollards_rho
+
+
+def get_non_zero_random_bytes(length):
+    """Generates random bytes that do not contain 0x00"""
+    random_bytes = b""
+    while len(random_bytes) < length:
+        batch = os.urandom(length + 5)
+        # Filter 0x00 bytes
+        batch = bytes([b for b in batch if b != 0])
+        random_bytes += batch
+    return random_bytes[:length]
 
 
 # ============================================================
@@ -18,16 +30,16 @@ def rsa_encrypt_file(filepath: str, key_bits: int) -> Dict:
       - Consolidated export structure
     """
 
-    max_payload_size = key_bits // 8 - 11
+    k = key_bits // 8
+    # PKCS#1 v1.5 standard overhead size: At least 11 bytes (3 marker + 8 padding)
+    max_payload_size = k - 11
     print(f"Provisioning RSA keypair ({key_bits}-bit)…")
+    print(f"Applying PKCS#1 v1.5 Padding. Max Payload per chunk: {max_payload_size} bytes")
 
     # Generate primes for RSA
     public_key, private_key = generate_keypair(key_bits // 2)
     e, n = public_key
     d, _, p, q = private_key
-
-    print(f"Public key   (e, n): e = {e}, n = {n}")
-    print(f"Private key  (d, n): d = {d}, n = {n}")
 
     # Load file
     data = read_input(filepath)
@@ -39,12 +51,18 @@ def rsa_encrypt_file(filepath: str, key_bits: int) -> Dict:
         for i in range(0, len(data), max_payload_size)
     ]
 
-    print("Chunk sizes:")
     encrypted_chunks: List[int] = []
 
     # Encrypt each chunk
     for chunk in payload_chunks:
-        m_int = bytes_to_int(chunk)
+        # Structure: 00 02 [PS] 00 [Data]
+        # Len(PS) = k - 3 - len(Data)
+        ps_len = k - 3 - len(chunk)
+        ps = get_non_zero_random_bytes(ps_len)
+        emsa_block = b'\x02' + ps + b'\x00' + chunk
+
+        # Encrypt
+        m_int = bytes_to_int(emsa_block)
         c_int = encrypt(m_int, e, n)
         encrypted_chunks.append(c_int)
 
@@ -103,22 +121,37 @@ def rsa_decrypt_file(
 
     plaintext_chunks: List[bytes] = []
 
-    for idx, block in enumerate(cipher_chunks):
+    for block_int in cipher_chunks:
         if use_crt:
-            decrypted_int = decrypt_crt(block, d, p, q)
+            decrypted_int = decrypt_crt(block_int, d, p, q)
         else:
-            decrypted_int = decrypt(block, d, n)
-        raw_bytes = int_to_bytes(decrypted_int, n)
+            decrypted_int = decrypt(block_int, d, n)
 
-        # Non-final block = fixed payload slice
-        if idx < len(cipher_chunks) - 1:
-            plaintext = raw_bytes[-payload_size:]
-        else:
-            # Final block may be shorter → strip leading padding only
-            plaintext = raw_bytes.lstrip(b"\x00")
+        em_bytes = int_to_bytes(decrypted_int, n)
 
-        plaintext_chunks.append(plaintext)
+        try:
+            if em_bytes[0] == 0x00 and em_bytes[1] == 0x02:
+                start_index = 2
+            elif em_bytes[0] == 0x02:
+                start_index = 1
+            else:
+                raise ValueError("Decryption Error: Invalid PKCS#1 marker")
+            
+            separator_index = -1
+            for i in range(start_index, len(em_bytes)):
+                if em_bytes[i] == 0x00:
+                    separator_index = i
+                    break
+            
+            if separator_index == -1:
+                raise ValueError("Decryption Error: No separator found")
+            
+            real_data = em_bytes[separator_index + 1:]
+            plaintext_chunks.append(real_data)
 
+        except Exception as e:
+            print(f"Warning: Block decryption failed - {e}")
+        
     return b"".join(plaintext_chunks)
 
 
@@ -170,7 +203,7 @@ def main():
     diff_bytes(read_input(input_file), plaintext)
 
     # 2. Run the Creative Hacking Demo
-    demo_hacking(48)
+    demo_hacking(50)
 
 
 if __name__ == "__main__":
